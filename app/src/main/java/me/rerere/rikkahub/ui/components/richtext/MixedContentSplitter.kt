@@ -37,6 +37,9 @@ fun extractPanelDisplayName(html: String, index: Int = 0): String {
         html.contains("状态栏") || html.contains("stat_data") || html.contains("Mvu.getMvuData") ->
             "角色状态栏"
 
+        html.contains("剧情") || html.contains("可选行动") || html.contains("行动方向") ->
+            "剧情与行动面板"
+
         html.contains("世界风云") || html.contains("新闻") || html.contains("world", ignoreCase = true) ->
             "世界状态面板"
 
@@ -177,7 +180,42 @@ private fun findPanelSpans(text: String): List<PanelSpan> {
         if (!shouldSplitAsPanel(html)) return@forEach
         spans += PanelSpan(start, end, html)
     }
-    return spans.sortedBy { it.start }
+    return splitDetailsTail(spans).sortedBy { it.start }
+}
+
+/**
+ * fork 加固：把「<details> 之后还跟着同块内容」的面板拆成两段。
+ *
+ * 状态卡常写成 `<Status_block> <details>[角色状态]</details> 『剧情发展』… </Status_block>`：
+ * details 展开后内容极高（会被 GPU 安全上限截断、转入内部滚动），同面板里排在
+ * 它后面的『剧情发展』就被顶出可视区。拆开后 details 独占一个 WebView 面板，
+ * 尾部（剧情发展/选项）成为独立段落恒定可见，不再被展开内容盖住。
+ */
+private fun splitDetailsTail(spans: List<PanelSpan>): List<PanelSpan> {
+    if (spans.isEmpty()) return spans
+    val out = mutableListOf<PanelSpan>()
+    for (span in spans) {
+        val dStart = span.html.indexOf("<details", 0, ignoreCase = true)
+        if (dStart < 0) {
+            out += span
+            continue
+        }
+        val dEnd = findBalancedTagEnd(span.html, dStart, "details")
+        if (dEnd < 0 || dEnd >= span.html.length) {
+            out += span
+            continue
+        }
+        val tail = span.html.substring(dEnd)
+        // 尾部去掉标签残余后仍有实质内容才拆，避免产生只有闭合标签残渣的空面板
+        val tailText = tail.replace(Regex("</?[a-zA-Z][a-zA-Z0-9_-]*>"), "").trim()
+        if (tailText.length < 8) {
+            out += span
+            continue
+        }
+        out += PanelSpan(span.start, span.start + dEnd, span.html.substring(0, dEnd))
+        out += PanelSpan(span.start + dEnd, span.end, tail)
+    }
+    return out
 }
 
 /**
