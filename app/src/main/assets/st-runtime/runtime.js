@@ -4938,7 +4938,18 @@ function installPanelMode() {
             }
         } catch (_e) { /* noop */ }
         try {
+            // fork 加固：重挂会重建 DOM，把用户已展开的 <details>（状态栏等）重新合上，
+            // 表现为「展开 [角色状态] 后又被盖住」。重挂前快照展开状态，挂载后按位恢复。
+            const detailsOpenBefore = Array.from(root.querySelectorAll('details')).map((d) => d.hasAttribute('open'));
             root.innerHTML = normalizeHtml(html);
+            if (detailsOpenBefore.some(Boolean)) {
+                const detailsAfter = Array.from(root.querySelectorAll('details'));
+                detailsOpenBefore.forEach((isOpen, di) => {
+                    if (isOpen && detailsAfter[di]) detailsAfter[di].setAttribute('open', '');
+                });
+                try { RikkaPanel.log('debug', '[panel] details restored ' + detailsOpenBefore.filter(Boolean).length + '/' + detailsOpenBefore.length + ' (' + t + ')'); } catch (_e) { /* noop */ }
+            }
+            Promise.resolve()
             Promise.resolve()
                 .then(() => (/katex|\$\$|\\\(|\\\[/i.test(String(html || '')) ? ensurePanelKatex() : null))
                 .then(() => runScripts(root))

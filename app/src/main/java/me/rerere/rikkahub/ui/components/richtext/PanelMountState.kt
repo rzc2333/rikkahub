@@ -393,6 +393,10 @@ internal class PanelMountState {
             inPlaceRemountCount++
             mountedHtml = html
             resetResourceSettleState()
+            TavernRuntimeManager.appendLog(
+                "debug",
+                "[panel] remount-in-place key=" + (key ?: "") + " len=" + html.length,
+            )
             val keyQuotedRemount = JSONObject.quote(key ?: "")
             wv.evaluateJavascript(
                 "try{" +
