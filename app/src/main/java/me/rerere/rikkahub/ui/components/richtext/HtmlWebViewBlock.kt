@@ -364,9 +364,7 @@ private fun createPanelContainer(
         settings.useWideViewPort = false
         settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
         overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS
-        // 极少数卡片的高度上报未命中时，容器会停在旧高度、内容转入内部滚动；
-        // 保留滚动条让这种状态可见可滑，而不是表现为「下面的内容被盖住了」。
-        isVerticalScrollBarEnabled = true
+        isVerticalScrollBarEnabled = false
         isFocusable = false
         isFocusableInTouchMode = false
         isLongClickable = false
@@ -380,7 +378,11 @@ private fun createPanelContainer(
                 }
             }
             if (v is WebView && event.getToolType(0) == MotionEvent.TOOL_TYPE_FINGER) {
-                v.requestDisallowInterceptTouchEvent(false)
+                // 内容溢出容器（高度上报未跟上的边缘态）时，滑动先归面板内部滚动——
+                // 否则列表拦截触摸后，WebView 只能靠长按选字才能滚。自适应完好、
+                // 不溢出的面板维持原行为：滑动交给外层消息列表。
+                val overflowed = v.scrollY > 0 || v.canScrollVertically(1) || v.canScrollVertically(-1)
+                v.requestDisallowInterceptTouchEvent(overflowed)
             }
             false
         }
