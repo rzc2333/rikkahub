@@ -364,7 +364,9 @@ private fun createPanelContainer(
         settings.useWideViewPort = false
         settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
         overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS
-        isVerticalScrollBarEnabled = false
+        // 极少数卡片的高度上报未命中时，容器会停在旧高度、内容转入内部滚动；
+        // 保留滚动条让这种状态可见可滑，而不是表现为「下面的内容被盖住了」。
+        isVerticalScrollBarEnabled = true
         isFocusable = false
         isFocusableInTouchMode = false
         isLongClickable = false
