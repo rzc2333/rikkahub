@@ -1,0 +1,46 @@
+pluginManagement {
+    includeBuild("build-logic")
+
+    repositories {
+        google()
+        mavenCentral()
+        // 插件门户偶发解析失败会让整个构建在配置阶段就挂掉，先走镜像兜底
+        maven("https://maven.aliyun.com/repository/gradle-plugin")
+        gradlePluginPortal()
+        maven("https://repo.itextsupport.com/android")
+    }
+    resolutionStrategy {
+        eachPlugin {
+            if (requested.id.id == "io.objectbox") {
+                useModule("io.objectbox:objectbox-gradle-plugin:${requested.version}")
+            }
+        }
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+        maven("https://jitpack.io")
+        mavenLocal()
+    }
+}
+
+rootProject.name = "rikkahub"
+include(":app")
+include(":highlight")
+include(":ai")
+include(":search")
+include(":speech")
+include(":common")
+include(":document")
+include(":web")
+include(":material3")
+
+// Build 1779956616 — force cache refresh
+include(":ui")
+include(":workspace")
+include(":app:baselineprofile")
+include(":mediagen")
+include(":oauth")

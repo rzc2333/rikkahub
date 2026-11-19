@@ -1,0 +1,20 @@
+# These are supported funding model platforms
+#
+# This fork intentionally declares NO funding platforms: the Sponsor button and
+# the donate links bundled with this repo used to point at the upstream
+# RikkaHub author (ko_fi: reovodev), which is not this fork's author. Keeping
+# every key empty keeps the file tracked, so an upstream merge that tries to
+# restore a sponsor shows up as a conflict instead of silently coming back.
+github:
+patreon:
+open_collective:
+ko_fi:
+tidelift:
+community_bridge:
+liberapay:
+issuehunt:
+lfx_crowdfunding:
+polar:
+buy_me_a_coffee:
+thanks_dev:
+custom:
