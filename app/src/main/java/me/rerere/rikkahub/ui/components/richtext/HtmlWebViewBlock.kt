@@ -118,6 +118,8 @@ fun HtmlWebViewBlock(
     var heightDp by remember(panelKey) {
         mutableIntStateOf(PanelHeightCache.get(panelKey, contentHash))
     }
+    // GPU 安全上限截断标记：截断时面板只显示一部分内容，界面上引导用户进全屏查看
+    var heightCapped by remember(panelKey) { mutableStateOf(false) }
     var stage by remember(panelKey) {
         mutableStateOf<PanelLoadStage>(PanelLoadStage.WaitingHost(panelTitle))
     }
@@ -167,6 +169,7 @@ fun HtmlWebViewBlock(
             if (capped) Log.w(TAG, "[panel] height $raw dp exceeds GPU safe max, clamped to $bounded dp")
             PanelHeightCache.put(panelKey, contentHash, bounded)
             heightDp = bounded
+            heightCapped = capped
             stage = PanelLoadStage.ResourcesLoading(panelTitle)
             TavernPanelLoadScheduler.markDone(panelKey)
         }
@@ -177,6 +180,7 @@ fun HtmlWebViewBlock(
         DetachedPanelWebViewCache.evictAndDestroy(panelKey)
         mountState.reloadNow()
         heightDp = 0
+        heightCapped = false
         localCrashCount = 0
         rendererEpoch += 1
         if (!slotGranted) {
@@ -245,6 +249,18 @@ fun HtmlWebViewBlock(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+            }
+        }
+
+        if (heightCapped) {
+            TextButton(
+                onClick = { showFullscreen = true },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    l10n("内容较长，此处仅显示部分，点击全屏查看全部", "Content is long; only part is shown here. Tap to view all of it in fullscreen"),
+                    style = MaterialTheme.typography.labelMedium,
+                )
             }
         }
 
