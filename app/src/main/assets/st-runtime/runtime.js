@@ -4383,6 +4383,12 @@ function ensurePanelChatDomStubs() {
  */
 function convertPanelVh(content) {
     if (typeof content !== 'string' || content.indexOf('vh') < 0) return content;
+    const hasCss = /min-height\s*:\s*[^;{}]*\d+(?:\.\d+)?vh/i.test(content);
+    const hasInline = /style\s*=\s*(["'])[\s\S]*?min-height\s*:\s*[^;]*?\d+(?:\.\d+)?vh[\s\S]*?\1/i.test(content);
+    const hasJs = /(\.style\.minHeight\s*=\s*(["']))([\s\S]*?vh)(\2)/i.test(content)
+        || /(setProperty\s*\(\s*(["'])min-height\2\s*,\s*(["']))([\s\S]*?vh)(\3\s*\))/i.test(content);
+    if (!hasCss && !hasInline && !hasJs) return content;
+
     const toVar = (value) => String(value).replace(/(\d+(?:\.\d+)?)vh\b/gi, (match, num) => {
         const parsed = parseFloat(num);
         if (!isFinite(parsed)) return match;
@@ -4390,31 +4396,30 @@ function convertPanelVh(content) {
         if (parsed === 100) return expr;
         return 'calc(' + expr + ' * ' + (parsed / 100) + ')';
     });
-    // fork 加固：min-height 之外，height / max-height 的 vh 锁高同样会把手风琴
-    // 展开后的内容裁在固定高里（症状：展开状态栏后「盖住」同卡后续面板）。
-    // 三类属性逐一替换；height 用负向后视，避免咬到 min-height / max-height 的尾巴。
-    for (const prop of ['min-height', 'max-height', 'height']) {
-        const p = String(prop).replace(/-/g, '\\-');
-        const look = prop === 'height' ? '(?<![\\w-])' : '';
-        // 1) CSS 声明块 / <style>
-        const cssRe = new RegExp('(' + look + p + '\\s*:\\s*)([^;{}]*?\\d+(?:\\.\\d+)?vh)(?=\\s*[;}])', 'gi');
-        if (cssRe.test(content)) {
-            content = content.replace(cssRe, (_m, prefix, value) => prefix + toVar(value));
-        }
-        // 2) 行内 style="...prop:...vh..."
-        const inlineRe = new RegExp('(style\\s*=\\s*(["\']))([^"\']*?' + look + p + '\\s*:\\s*[^;]*?\\d+(?:\\.\\d+)?vh[^"\']*?)(\\2)', 'gi');
-        content = content.replace(inlineRe, (match, prefix, _q, styleContent, suffix) => {
-            const propRe = new RegExp('(' + look + p + '\\s*:\\s*)([^;]*?\\d+(?:\\.\\d+)?vh)', 'gi');
-            return prefix + styleContent.replace(propRe, (_m2, p1, p2) => p1 + toVar(p2)) + suffix;
+
+    // 1) CSS 声明块 / <style> / 内联样式串：min-height: ...vh
+    content = content.replace(/(min-height\s*:\s*)([^;{}]*?\d+(?:\.\d+)?vh)(?=\s*[;}])/gi,
+        (_m, prefix, value) => prefix + toVar(value));
+    // 2) 行内 style="...min-height:...vh..."
+    content = content.replace(/(style\s*=\s*(["']))([^"']*?)(\2)/gi,
+        (match, prefix, _q, styleContent, suffix) => {
+            if (!/min-height\s*:\s*[^;]*vh/i.test(styleContent)) return match;
+            const replaced = styleContent.replace(/(min-height\s*:\s*)([^;]*?\d+(?:\.\d+)?vh)/gi,
+                (_m, p1, p2) => p1 + toVar(p2));
+            return prefix + replaced + suffix;
         });
-        // 3) JS: element.style.XxxHeight = "...vh"
-        const jsCap = prop.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join('');
-        const jsAssignRe = new RegExp('(\\.style\\.' + jsCap + '\\s*=\\s*(["\']))([\\s\\S]*?\\d+(?:\\.\\d+)?vh[\\s\\S]*?)(\\2)', 'gi');
-        content = content.replace(jsAssignRe, (_m, pre, _q, val, suf) => pre + toVar(val) + suf);
-        // 4) JS: element.style.setProperty('prop', "...vh")
-        const jsSetRe = new RegExp('(setProperty\\s*\\(\\s*(["\'])' + p + '\\2\\s*,\\s*(["\']))([\\s\\S]*?\\d+(?:\\.\\d+)?vh[\\s\\S]*?)(\\3\\s*\\))', 'gi');
-        content = content.replace(jsSetRe, (_m, pre, _q1, _q2, val, suf) => pre + toVar(val) + suf);
-    }
+    // 3) JS: element.style.minHeight = "...vh"
+    content = content.replace(/(\.style\.minHeight\s*=\s*(["']))([\s\S]*?)(\2)/gi,
+        (match, prefix, _q, val, suffix) => {
+            if (!/\b\d+(?:\.\d+)?vh\b/i.test(val)) return match;
+            return prefix + toVar(val) + suffix;
+        });
+    // 4) JS: element.style.setProperty('min-height', "...vh")
+    content = content.replace(/(setProperty\s*\(\s*(["'])min-height\2\s*,\s*(["']))([\s\S]*?)(\3\s*\))/gi,
+        (match, prefix, _q1, _q2, val, suffix) => {
+            if (!/\b\d+(?:\.\d+)?vh\b/i.test(val)) return match;
+            return prefix + toVar(val) + suffix;
+        });
     return content;
 }
 
@@ -5007,16 +5012,6 @@ function installPanelMode() {
             });
             mo.observe(root, { childList: true, subtree: true, attributes: true, characterData: true });
         } catch (_e) { /* noop */ }
-        // fork 加固：同时观察 body——卡脚本把内容挂到 root 之外（body 直挂）时仍能跟踪高度
-        try {
-            let bodyScheduled = false;
-            const bodyMo = new MutationObserver(() => {
-                if (bodyScheduled) return;
-                bodyScheduled = true;
-                requestAnimationFrame(() => { bodyScheduled = false; report(); });
-            });
-            bodyMo.observe(document.body, { childList: true, subtree: true, attributes: true, characterData: true });
-        } catch (_e) { /* noop */ }
     }
     try { if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => report()).catch(() => {}); } catch (_e) { /* noop */ }
     window.addEventListener('load', () => { report(); setTimeout(report, 250); });
@@ -5086,7 +5081,7 @@ function installPanelMode() {
             report();
             if (lastReportedHeight > 48 && lastReportedHeight === prev) {
                 stableReportTicks++;
-                if (stableReportTicks >= 6 && intervalMs < 1200) startReportPolling(1200);
+                if (stableReportTicks >= 6 && intervalMs < 2000) startReportPolling(2000);
             } else {
                 stableReportTicks = 0;
             }
