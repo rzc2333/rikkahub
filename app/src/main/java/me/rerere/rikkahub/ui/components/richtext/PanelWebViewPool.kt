@@ -48,6 +48,10 @@ internal object ActivePanelWebViewPool {
         synchronized(lock) {
             if (lruKeys.remove(key)) {
                 lruKeys.add(key)
+                // 顺序变化不改变活跃集合内容，不 publish——滑动时每个触摸事件都会
+                // 走到这里，若发布会让所有面板重组，造成明显卡顿。
+            } else {
+                lruKeys.add(key)
                 publish()
             }
         }
