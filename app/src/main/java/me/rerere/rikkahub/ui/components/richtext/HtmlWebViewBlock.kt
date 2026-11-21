@@ -19,6 +19,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -128,6 +129,13 @@ fun HtmlWebViewBlock(
     val activeKeys by ActivePanelWebViewPool.activeKeys.collectAsState()
     val hibernated = slotGranted && !activeKeys.contains(panelKey)
 
+    // 休眠诊断：占位卡出现（面板被池淘汰/释放）时记录，配合日志定位「变色」问题
+    LaunchedEffect(hibernated, panelKey) {
+        if (hibernated) {
+            TavernRuntimeManager.appendLog("debug", "[panel] hibernate key=$panelKey (not in active pool)")
+        }
+    }
+
     LaunchedEffect(panelKey) {
         val slot = TavernPanelLoadScheduler.enqueue(panelKey, panelTitle)
         stage = PanelLoadStage.Queued(
@@ -210,6 +218,11 @@ fun HtmlWebViewBlock(
                         manualReload = false,
                     ),
                     onReload = reloadPanel,
+                    onWake = {
+                        ActivePanelWebViewPool.acquire(panelKey)
+                        slotGranted = true
+                        stage = PanelLoadStage.LoadingWebView(panelTitle)
+                    },
                 )
             } else {
                 key(rendererEpoch) {
@@ -528,10 +541,13 @@ private fun PanelStatusPlaceholder(
     title: String,
     statusText: String,
     onReload: () -> Unit,
+    onWake: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onWake),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
