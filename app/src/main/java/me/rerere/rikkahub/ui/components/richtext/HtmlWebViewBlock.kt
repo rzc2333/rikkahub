@@ -369,8 +369,8 @@ private fun createPanelContainer(
         isFocusableInTouchMode = false
         isLongClickable = false
         setOnTouchListener { v, event ->
+            ActivePanelWebViewPool.touch(key)
             if (event.actionMasked == MotionEvent.ACTION_DOWN) {
-                ActivePanelWebViewPool.touch(key)
                 TavernRuntimeManager.recordWebViewBootStage("panel", key, "first_interaction")
                 if (event.getToolType(0) == MotionEvent.TOOL_TYPE_FINGER) {
                     isFocusable = true
