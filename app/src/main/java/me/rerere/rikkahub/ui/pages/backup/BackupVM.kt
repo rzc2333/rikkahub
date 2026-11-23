@@ -31,7 +31,7 @@ import java.io.File
 
 private const val TAG = "BackupVM"
 
-private const val MAX_ST_JSONL_BYTES = 64L * 1024 * 1024
+private const val MAX_ST_JSONL_BYTES = 512L * 1024 * 1024
 
 class BackupVM(
     private val settingsStore: SettingsStore,
