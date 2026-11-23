@@ -30,6 +30,7 @@ import me.rerere.hugeicons.stroke.FileImport
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.data.datastore.WebDavConfig
 import me.rerere.rikkahub.data.sync.importer.DeepSeekImportResult
+import me.rerere.rikkahub.data.sync.importer.StJsonlChatImportResult
 import me.rerere.rikkahub.ui.components.ui.CardGroup
 import me.rerere.rikkahub.ui.context.LocalToaster
 import me.rerere.rikkahub.ui.pages.backup.BackupVM
@@ -54,8 +55,9 @@ fun ImportExportTab(
     var isRestoring by remember { mutableStateOf(false) }
     var showImportConfirmDialog by remember { mutableStateOf(false) }
     var deepSeekImportResult by remember { mutableStateOf<DeepSeekImportResult?>(null) }
+    var stJsonlImportResult by remember { mutableStateOf<StJsonlChatImportResult?>(null) }
 
-    // 导入类型：local、chatbox、cherry、deepseek
+    // 导入类型：local、chatbox、cherry、deepseek、st_jsonl
     var importType by remember { mutableStateOf("local") }
 
     // 创建文件保存的launcher
@@ -161,9 +163,14 @@ fun ImportExportTab(
                             // 清理临时文件
                             tempFile.delete()
                         }
+
+                        "st_jsonl" -> {
+                            // SillyTavern .jsonl 聊天记录：解析后作为新会话导入（追加，不覆盖）
+                            stJsonlImportResult = vm.importStJsonlFromUri(sourceUri)
+                        }
                     }
 
-                    if (importType != "deepseek") {
+                    if (importType != "deepseek" && importType != "st_jsonl") {
                         toaster.show(
                             context.getString(R.string.backup_page_restore_success),
                             type = ToastType.Success
@@ -291,6 +298,22 @@ fun ImportExportTab(
                     BackupActionIcon(HugeIcons.FileImport, loading = isRestoring && importType == "cherry")
                 },
             )
+
+            item(
+                onClick = if (!isRestoring) {
+                    {
+                        importType = "st_jsonl"
+                        openDocumentLauncher.launch(
+                            arrayOf("application/x-ndjson", "application/json", "text/plain", "application/octet-stream")
+                        )
+                    }
+                } else null,
+                headlineContent = { Text(stringResource(R.string.backup_page_import_from_st_jsonl)) },
+                supportingContent = { Text(stringResource(R.string.backup_page_import_st_jsonl_desc)) },
+                leadingContent = {
+                    BackupActionIcon(HugeIcons.FileImport, loading = isRestoring && importType == "st_jsonl")
+                },
+            )
         }
     }
 
@@ -311,6 +334,28 @@ fun ImportExportTab(
             },
             confirmButton = {
                 TextButton(onClick = { deepSeekImportResult = null }) {
+                    Text(stringResource(R.string.confirm))
+                }
+            },
+        )
+    }
+
+    stJsonlImportResult?.let { result ->
+        AlertDialog(
+            onDismissRequest = { stJsonlImportResult = null },
+            title = { Text(stringResource(R.string.backup_page_import_st_jsonl_complete)) },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.backup_page_import_st_jsonl_summary,
+                        result.title,
+                        result.importedMessages,
+                        result.skippedHiddenMessages,
+                    )
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { stJsonlImportResult = null }) {
                     Text(stringResource(R.string.confirm))
                 }
             },

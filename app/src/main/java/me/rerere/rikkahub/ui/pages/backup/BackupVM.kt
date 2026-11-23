@@ -23,12 +23,15 @@ import me.rerere.rikkahub.data.sync.importer.ChatboxImporter
 import me.rerere.rikkahub.data.sync.importer.CherryStudioProviderImporter
 import me.rerere.rikkahub.data.sync.importer.DeepSeekImportResult
 import me.rerere.rikkahub.data.sync.importer.DeepSeekMigrator
+import me.rerere.rikkahub.data.sync.importer.StJsonlImporter
 import me.rerere.rikkahub.data.sync.webdav.WebDavBackupItem
 import me.rerere.rikkahub.data.sync.webdav.WebDavSync
 import me.rerere.rikkahub.utils.UiState
 import java.io.File
 
 private const val TAG = "BackupVM"
+
+private const val MAX_ST_JSONL_BYTES = 64L * 1024 * 1024
 
 class BackupVM(
     private val settingsStore: SettingsStore,
@@ -176,6 +179,27 @@ class BackupVM(
 
     suspend fun restoreFromDeepSeek(uri: Uri): DeepSeekImportResult = deepSeekMigrator.import(uri)
 
+    suspend fun importStJsonl(file: File): StJsonlChatImportResult = withContext(Dispatchers.IO) {
+        require(file.length() <= MAX_ST_JSONL_BYTES) { "Chat archive is too large" }
+        val currentSettings = settings.value
+        val result = StJsonlImporter.parse(
+            jsonl = file.readText(),
+            assistantId = currentSettings.assistantId,
+            fallbackTitle = file.nameWithoutExtension,
+        )
+        conversationRepository.insertConversation(result.conversation)
+        Log.i(
+            TAG,
+            "importStJsonl: import ${result.importedMessages} messages, " +
+                "skip ${result.skippedHiddenMessages} hidden messages"
+        )
+        StJsonlChatImportResult(
+            title = result.conversation.title,
+            importedMessages = result.importedMessages,
+            skippedHiddenMessages = result.skippedHiddenMessages,
+        )
+    }
+
     fun restoreFromCherryStudio(file: File) {
         val importProviders = CherryStudioProviderImporter.importProviders(file)
 
@@ -237,6 +261,12 @@ class BackupVM(
         }
     }
 }
+
+data class StJsonlChatImportResult(
+    val title: String,
+    val importedMessages: Int,
+    val skippedHiddenMessages: Int,
+)
 
 data class ChatboxRestoreResult(
     val importedProviders: Int,
