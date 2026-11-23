@@ -100,8 +100,43 @@ jobs:
           EOF
           fi
 
-          # 写入Google Services配置
-          echo '${{ secrets.GOOGLE_SERVICES_JSON }}' > app/google-services.json
+          if [ -n "${{ secrets.GOOGLE_SERVICES_JSON }}" ]; then
+            # 写入Google Services配置
+            echo '${{ secrets.GOOGLE_SERVICES_JSON }}' > app/google-services.json
+          else
+            # fork 上没有 Firebase secrets：生成占位配置，让 google-services 插件通过
+            # （Firebase 崩溃/分析上报在 fork 构建里不可用，其余功能不受影响）
+            cat > app/google-services.json << 'EOF2'
+          {
+            "project_info": {
+              "project_number": "000000000000",
+              "project_id": "rikkahub-fork-placeholder",
+              "storage_bucket": "rikkahub-fork-placeholder.appspot.com"
+            },
+            "client": [
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:000000000000:android:0000000000000000",
+                  "android_client_info": { "package_name": "me.rerere.rikkahub" }
+                },
+                "oauth_client": [],
+                "api_key": [{ "current_key": "AIzaSyA000000000000000000000000000000" }],
+                "services": { "appinvite_service": { "other_platform_oauth_client": [] } }
+              },
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:000000000000:android:1111111111111111",
+                  "android_client_info": { "package_name": "me.rerere.rikkahub.debug" }
+                },
+                "oauth_client": [],
+                "api_key": [{ "current_key": "AIzaSyA000000000000000000000000000000" }],
+                "services": { "appinvite_service": { "other_platform_oauth_client": [] } }
+              }
+            ],
+            "configuration_version": "1"
+          }
+          EOF2
+          fi
 
       - name: Gradle Build
         run: |
