@@ -30,7 +30,7 @@ import me.rerere.hugeicons.stroke.FileImport
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.data.datastore.WebDavConfig
 import me.rerere.rikkahub.data.sync.importer.DeepSeekImportResult
-import me.rerere.rikkahub.data.sync.importer.StJsonlChatImportResult
+import me.rerere.rikkahub.ui.pages.backup.StJsonlChatImportResult
 import me.rerere.rikkahub.ui.components.ui.CardGroup
 import me.rerere.rikkahub.ui.context.LocalToaster
 import me.rerere.rikkahub.ui.pages.backup.BackupVM
@@ -166,7 +166,19 @@ fun ImportExportTab(
 
                         "st_jsonl" -> {
                             // SillyTavern .jsonl 聊天记录：解析后作为新会话导入（追加，不覆盖）
-                            stJsonlImportResult = vm.importStJsonlFromUri(sourceUri)
+                            val tempFile =
+                                File(context.cacheDir, "temp_st_jsonl_${System.currentTimeMillis()}.jsonl")
+                            try {
+                                context.contentResolver.openInputStream(sourceUri)?.use { inputStream ->
+                                    FileOutputStream(tempFile).use { outputStream ->
+                                        inputStream.copyTo(outputStream)
+                                    }
+                                }
+
+                                stJsonlImportResult = vm.importStJsonl(tempFile)
+                            } finally {
+                                tempFile.delete()
+                            }
                         }
                     }
 
