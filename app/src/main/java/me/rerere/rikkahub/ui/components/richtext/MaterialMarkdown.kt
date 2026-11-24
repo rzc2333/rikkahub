@@ -303,6 +303,7 @@ private val DetailsFenceRegex = Regex(
 
 private fun normalizeDetailsBlocks(content: String): String {
     if (!content.contains("<details", ignoreCase = true)) return content
+    // 先剥掉状态块自己的外围 ``` 围栏
     val stripped = content.replace(DetailsFenceRegex) { match ->
         val body = match.groupValues[2]
         if (body.contains("\n- ") || body.startsWith("- ")) {
@@ -312,9 +313,29 @@ private fun normalizeDetailsBlocks(content: String): String {
             match.value
         }
     }
-    // details 内容的最后一行若是列表项，紧跟其后的 </details> 和后面的段落（如『剧情发展』的选项）
-    // 会被“懒延续”进这个列表项，整体跟着缩进错位；在 </details> 前补一个空行让列表先正常结束
-    return stripped.replace(Regex("\n+</details>"), "\n\n</details>")
+    // 再逐行保证 <details> 区域的空白结构：
+    // - <summary> 行后补空行，让手写 HTML 块在 summary 后结束，块内内容按 Markdown 渲染；
+    // - </details> 行前后补空行：没有空行时，后面的文字（如『剧情发展』的选项）会被“懒延续”
+    //   进 details 里最后一个列表项跟着缩进，或作为裸文本被压成一行。
+    val lines = stripped.split('\n')
+    val out = ArrayList<String>(lines.size + 8)
+    for (i in lines.indices) {
+        val line = lines[i]
+        val trimmed = line.trim()
+        val isClose = trimmed.startsWith("</details")
+        if (isClose && out.isNotEmpty() && out.last().trim().isNotEmpty()) out += ""
+        out += line
+        if (isClose) {
+            if (i + 1 < lines.size && lines[i + 1].trim().isNotEmpty()) out += ""
+            continue
+        }
+        if (trimmed.contains("</summary>", ignoreCase = true) &&
+            (i + 1 >= lines.size || lines[i + 1].trim().isNotEmpty())
+        ) {
+            out += ""
+        }
+    }
+    return out.joinToString("\n")
 }
 
 // 对话与书名号着色：和酒馆的显示习惯一致，"对话"/“对话”用橙色、《作品名》用蓝色。
