@@ -431,6 +431,8 @@ private fun MessagePartsBlock(
                                             scope = AssistantAffectScope.USER,
                                             visual = true,
                                         ),
+                                        // 用户自己的消息不做引号/书名号着色，只有角色（AI）的消息着色
+                                        colorizeQuotes = false,
                                         onClickCitation = handleClickCitation
                                     )
                                 }

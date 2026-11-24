@@ -141,6 +141,7 @@ fun MarkdownBlock(
     modifier: Modifier = Modifier,
     style: TextStyle = LocalTextStyle.current,
     streaming: Boolean = false,
+    colorizeQuotes: Boolean = true,
     onClickCitation: (String) -> Unit = {}
 ) {
     val enableLatexRendering = LocalSettings.current.displaySetting.enableLatexRendering
@@ -212,6 +213,7 @@ fun MarkdownBlock(
         theme = theme,
         components = components,
         streaming = streaming,
+        colorizeQuotes = colorizeQuotes,
     )
 }
 

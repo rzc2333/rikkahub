@@ -74,12 +74,17 @@ fun MaterialMarkdown(
     components: MarkdownComponents = MaterialMarkdownDefaults.components,
     softBreakAsLineBreak: Boolean = true,
     streaming: Boolean = false,
+    colorizeQuotes: Boolean = true,
     onLinkClick: ((url: String) -> Unit)? = null,
 ) {
     val merged = LocalTextStyle.current.merge(style)
     val resolved = merged.copy(color = merged.color.takeOrElse { LocalContentColor.current })
-    // 兼容酒馆的渲染习惯：<details> 状态块按列表渲染，对话引号和书名号着色
-    val normalized = remember(content) { colorizeQuotes(normalizeDetailsBlocks(content)) }
+    // 兼容酒馆的渲染习惯：<details> 状态块按列表渲染，对话引号和书名号着色。
+    // 着色只用于角色（AI）的消息，用户消息由调用方传 false 关闭
+    val normalized = remember(content, colorizeQuotes) {
+        val base = normalizeDetailsBlocks(content)
+        if (colorizeQuotes) colorizeQuotes(base) else base
+    }
     // 插槽里的组件（代码块、表格工具栏等）用 Material 的 Text，让它们也拿到正文样式
     ProvideTextStyle(resolved) {
         BetterMarkdown(
