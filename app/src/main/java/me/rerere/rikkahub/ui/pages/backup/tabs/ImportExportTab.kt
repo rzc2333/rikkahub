@@ -1,5 +1,6 @@
 package me.rerere.rikkahub.ui.pages.backup.tabs
 
+import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -175,7 +176,17 @@ fun ImportExportTab(
                                     }
                                 }
 
-                                stJsonlImportResult = vm.importStJsonl(tempFile)
+                                // 取原始文件名（去掉扩展名）作为导入会话的标题，比如 xxoo.jsonl → xxoo
+                                val displayName = context.contentResolver.query(
+                                    sourceUri,
+                                    arrayOf(OpenableColumns.DISPLAY_NAME),
+                                    null,
+                                    null,
+                                    null,
+                                )?.use { cursor ->
+                                    if (cursor.moveToFirst()) cursor.getString(0) else null
+                                }.orEmpty()
+                                stJsonlImportResult = vm.importStJsonl(tempFile, displayName.substringBeforeLast('.'))
                             } finally {
                                 tempFile.delete()
                             }

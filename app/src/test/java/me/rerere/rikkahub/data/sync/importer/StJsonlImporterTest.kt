@@ -20,7 +20,7 @@ class StJsonlImporterTest {
         """.trimIndent()
         val result = StJsonlImporter.parse(jsonl, Uuid.random(), fallbackTitle = "backup file")
         val conversation = result.conversation
-        assertEquals("Alice", conversation.title)
+        assertEquals("backup file", conversation.title)
         assertEquals(5, result.importedMessages)
         assertEquals(1, result.skippedHiddenMessages)
         assertEquals(5, conversation.messageNodes.size)

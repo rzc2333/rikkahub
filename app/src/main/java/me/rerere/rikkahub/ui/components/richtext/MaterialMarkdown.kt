@@ -357,8 +357,8 @@ private fun colorizeQuotes(content: String): String {
         }
         // 已有着色的行不再重复处理
         val colored = if (inFence || trimmed.contains("<font color=")) line else line
-            .replace(AsciiQuoteRegex) { "<font color=\"#FF8C00\">${it.value}</font>" }
-            .replace(DialogueQuoteRegex) { "<font color=\"#FF8C00\">${it.value}</font>" }
+            .replace(AsciiQuoteRegex) { "<font color=\"#B5651D\">${it.value}</font>" }
+            .replace(DialogueQuoteRegex) { "<font color=\"#B5651D\">${it.value}</font>" }
             .replace(TitleMarkRegex) { "<font color=\"#1E90FF\">${it.value}</font>" }
         out += colored
     }

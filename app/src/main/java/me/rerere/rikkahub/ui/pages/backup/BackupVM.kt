@@ -179,13 +179,14 @@ class BackupVM(
 
     suspend fun restoreFromDeepSeek(uri: Uri): DeepSeekImportResult = deepSeekMigrator.import(uri)
 
-    suspend fun importStJsonl(file: File): StJsonlChatImportResult = withContext(Dispatchers.IO) {
+    suspend fun importStJsonl(file: File, title: String): StJsonlChatImportResult = withContext(Dispatchers.IO) {
         require(file.length() <= MAX_ST_JSONL_BYTES) { "Chat archive is too large" }
         val currentSettings = settings.value
         val result = StJsonlImporter.parse(
             jsonl = file.readText(),
             assistantId = currentSettings.assistantId,
-            fallbackTitle = file.nameWithoutExtension,
+            // 标题用原始文件名（调用方已去掉扩展名）；临时文件名没有意义，不再兜底
+            fallbackTitle = title.trim(),
         )
         conversationRepository.insertConversation(result.conversation)
         Log.i(

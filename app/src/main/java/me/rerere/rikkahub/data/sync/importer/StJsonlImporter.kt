@@ -127,8 +127,9 @@ object StJsonlImporter {
             imported++
         }
 
-        val resolvedTitle = title
-            ?: fallbackTitle.trim().takeIf { it.isNotEmpty() }
+        // 标题优先用导入文件名（fallbackTitle），其次才是元数据里的标题和角色名
+        val resolvedTitle = fallbackTitle.trim().takeIf { it.isNotEmpty() }
+            ?: title
             ?: characterName
             ?: "Imported ST Chat"
         val conversation = Conversation(
