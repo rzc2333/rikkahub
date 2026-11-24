@@ -78,8 +78,8 @@ fun MaterialMarkdown(
 ) {
     val merged = LocalTextStyle.current.merge(style)
     val resolved = merged.copy(color = merged.color.takeOrElse { LocalContentColor.current })
-    // 兼容酒馆状态块这类 <details> 内容，避免 summary 后第一段的换行被 HTML 块规则压掉
-    val normalized = remember(content) { normalizeDetailsBlocks(content) }
+    // 兼容酒馆的渲染习惯：<details> 状态块按列表渲染，对话引号和书名号着色
+    val normalized = remember(content) { colorizeQuotes(normalizeDetailsBlocks(content)) }
     // 插槽里的组件（代码块、表格工具栏等）用 Material 的 Text，让它们也拿到正文样式
     ProvideTextStyle(resolved) {
         BetterMarkdown(
@@ -298,7 +298,7 @@ private val DetailsFenceRegex = Regex(
 
 private fun normalizeDetailsBlocks(content: String): String {
     if (!content.contains("<details", ignoreCase = true)) return content
-    return content.replace(DetailsFenceRegex) { match ->
+    val stripped = content.replace(DetailsFenceRegex) { match ->
         val body = match.groupValues[2]
         if (body.contains("\n- ") || body.startsWith("- ")) {
             // summary 行后补一个空行，让手写 HTML 块在这里结束，块内各段就能按统一的列表渲染
@@ -307,4 +307,34 @@ private fun normalizeDetailsBlocks(content: String): String {
             match.value
         }
     }
+    // details 内容的最后一行若是列表项，紧跟其后的 </details> 和后面的段落（如『剧情发展』的选项）
+    // 会被“懒延续”进这个列表项，整体跟着缩进错位；在 </details> 前补一个空行让列表先正常结束
+    return stripped.replace(Regex("\n+</details>"), "\n\n</details>")
+}
+
+// 对话与书名号着色：和酒馆的显示习惯一致，"对话"/“对话”用橙色、《作品名》用蓝色。
+// 引号必须成对出现在同一行；跳过代码围栏里的行，避免把代码里的引号也包上标签。
+private val AsciiQuoteRegex = Regex("\"[^\"\r\n]*\"")
+private val DialogueQuoteRegex = Regex("“[^”\n]*”")
+private val TitleMarkRegex = Regex("《[^》\n]*》")
+
+private fun colorizeQuotes(content: String): String {
+    if ('“' !in content && '《' !in content && '"' !in content) return content
+    val out = ArrayList<String>(content.length / 32 + 1)
+    var inFence = false
+    for (line in content.split('\n')) {
+        val trimmed = line.trim()
+        if (trimmed.startsWith("```")) {
+            inFence = !inFence
+            out += line
+            continue
+        }
+        // 已有着色的行不再重复处理
+        val colored = if (inFence || trimmed.contains("<font color=")) line else line
+            .replace(AsciiQuoteRegex) { "<font color=\"#FF8C00\">${it.value}</font>" }
+            .replace(DialogueQuoteRegex) { "<font color=\"#FF8C00\">${it.value}</font>" }
+            .replace(TitleMarkRegex) { "<font color=\"#1E90FF\">${it.value}</font>" }
+        out += colored
+    }
+    return out.joinToString("\n")
 }
