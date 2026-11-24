@@ -78,10 +78,12 @@ fun MaterialMarkdown(
 ) {
     val merged = LocalTextStyle.current.merge(style)
     val resolved = merged.copy(color = merged.color.takeOrElse { LocalContentColor.current })
+    // 兼容酒馆状态块这类 <details> 内容，避免 summary 后第一段的换行被 HTML 块规则压掉
+    val normalized = remember(content) { normalizeDetailsBlocks(content) }
     // 插槽里的组件（代码块、表格工具栏等）用 Material 的 Text，让它们也拿到正文样式
     ProvideTextStyle(resolved) {
         BetterMarkdown(
-            content = content,
+            content = normalized,
             modifier = modifier,
             style = resolved,
             theme = theme,
@@ -286,4 +288,79 @@ private fun TableCellContent(cell: TableCell, columnAlign: TextAlign?, fontWeigh
     val columnStyle = TextStyle(fontWeight = fontWeight, textAlign = columnAlign ?: TextAlign.Unspecified)
     // 单元格自己的样式优先于列的对齐方式和表头的字重；列宽由内容决定，单元格在列内的对齐交给表格
     MarkdownInlineContent(cell.content, style = columnStyle.merge(cell.style))
+}
+
+/**
+ * 兼容酒馆（SillyTavern）等来源的 `<details>` 状态块。
+ *
+ * 这类内容常写成 `<details><summary>…</summary>` 后紧跟一对外围的 ``` 围栏，状态各段之间用空行分隔。
+ * Markdown 解析器会在第一个空行处切断手写 HTML 块：summary 之后、第一个空行之前的那段文字（通常是
+ * user 的状态）不参与 Markdown 解析，渲染时换行被压成空格挤成一行，而后面的段落却正常变成列表。
+ *
+ * 这里按区域做归一化：summary 行后补一个空行让 HTML 块立即结束，并剥掉状态块自己的首尾裸围栏
+ * （内容里成对出现的围栏不受影响），让整块内容按统一的段落/列表渲染，`<details>` 折叠功能不变。
+ */
+private fun normalizeDetailsBlocks(content: String): String {
+    if (!content.contains("<details", ignoreCase = true)) return content
+    val lines = content.split('\n')
+
+    // 找出顶层 <details> 区域；流式输出中还没等到 </details> 时按到结尾处理
+    val regions = mutableListOf<Pair<Int, Int>>()
+    var depth = 0
+    var open = -1
+    for (i in lines.indices) {
+        val trimmed = lines[i].trim()
+        if (depth == 0 && trimmed.startsWith("<details", ignoreCase = true)) {
+            depth = 1
+            open = i
+        } else if (depth > 0 && trimmed.contains("</details", ignoreCase = true)) {
+            regions += open to i
+            depth = 0
+        }
+    }
+    if (depth > 0 && open >= 0) regions += open to lines.lastIndex
+    if (regions.isEmpty()) return content
+
+    val drop = hashSetOf<Int>()
+    val blankAfter = hashSetOf<Int>()
+    for ((start, end) in regions) {
+        var summary = -1
+        for (i in start..end) {
+            if (lines[i].trim().contains("</summary>", ignoreCase = true)) {
+                summary = i
+                break
+            }
+        }
+        if (summary < 0) continue
+        // 剥掉紧贴 summary 的开场围栏
+        var cursor = summary + 1
+        if (cursor <= end && lines[cursor].trim() == "```") {
+            drop += cursor
+            cursor++
+        }
+        blankAfter += cursor - 1
+        // 跟踪内容里 ``` 的开合：到区域结尾仍未闭合的，是状态块自己的收尾围栏，剥掉
+        var fenceOpen = false
+        var lastFence = -1
+        for (i in cursor..end) {
+            if (lines[i].trim().startsWith("```")) {
+                fenceOpen = !fenceOpen
+                lastFence = i
+            }
+        }
+        if (fenceOpen && lastFence >= 0 && lines[lastFence].trim() == "```") drop += lastFence
+    }
+    if (drop.isEmpty() && blankAfter.isEmpty()) return content
+
+    val out = ArrayList<String>(lines.size + blankAfter.size)
+    for (i in lines.indices) {
+        if (i in drop) {
+            // 被剥掉的围栏如果占的是补空行的位置，就原地换成空行
+            if (i in blankAfter) out += ""
+            continue
+        }
+        out += lines[i]
+        if (i in blankAfter && (i + 1 > lines.lastIndex || lines[i + 1].trim().isNotEmpty())) out += ""
+    }
+    return out.joinToString("\n")
 }
