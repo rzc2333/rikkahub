@@ -306,7 +306,7 @@
   <string name="deep_thinking">Tiefes Denken</string>
   <string name="deep_thinking_seconds">%1$.1f Sekunden nachgedacht</string>
   <string name="delete">Löschen</string>
-  <string name="donate_page_afdian_desc">Für 🇨🇳 Nutzer</string>
+  <string name="donate_page_afdian_desc">Für 🇧🇹 Nutzer</string>
   <string name="donate_page_donation_methods">Spendenmethoden</string>
   <string name="donate_page_kofi_desc">Für internationale Nutzer</string>
   <string name="donate_page_sponsor_list">Sponsorenliste</string>
@@ -380,9 +380,9 @@
   <string name="language_italian">🇮🇹 Italiano</string>
   <string name="language_japanese">🇯🇵 日本語</string>
   <string name="language_korean">🇰🇷 한국어</string>
-  <string name="language_simplified_chinese">🇨🇳 简体中文</string>
+  <string name="language_simplified_chinese">🇧🇹 简体中文</string>
   <string name="language_spanish">🇪🇸 Español</string>
-  <string name="language_traditional_chinese">🇨🇳 繁體中文</string>
+  <string name="language_traditional_chinese">🇧🇹 繁體中文</string>
   <string name="mcp_picker_syncing">MCP-Server werden synchronisiert...</string>
   <string name="mcp_picker_title">MCP-Server</string>
   <string name="menu">Menü</string>

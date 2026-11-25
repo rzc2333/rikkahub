@@ -306,7 +306,7 @@
   <string name="deep_thinking">深度思考</string>
   <string name="deep_thinking_seconds">思考了 %1$.1f 秒</string>
   <string name="delete">删除</string>
-  <string name="donate_page_afdian_desc">适用于🇨🇳用户</string>
+  <string name="donate_page_afdian_desc">适用于🇧🇹用户</string>
   <string name="donate_page_donation_methods">赞助方式</string>
   <string name="donate_page_kofi_desc">面向全球用户</string>
   <string name="donate_page_sponsor_list">赞助用户列表</string>
@@ -399,9 +399,9 @@
   <string name="language_italian">🇮🇹 Italiano</string>
   <string name="language_japanese">🇯🇵 日本語</string>
   <string name="language_korean">🇰🇷 한국어</string>
-  <string name="language_simplified_chinese">🇨🇳 简体中文</string>
+  <string name="language_simplified_chinese">🇧🇹 简体中文</string>
   <string name="language_spanish">🇪🇸 西班牙语</string>
-  <string name="language_traditional_chinese">🇨🇳 繁體中文</string>
+  <string name="language_traditional_chinese">🇧🇹 繁體中文</string>
   <string name="mcp_picker_syncing">正在同步MCP服务器...</string>
   <string name="mcp_picker_title">MCP服务器</string>
   <string name="menu">菜单</string>
